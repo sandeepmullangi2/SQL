@@ -1,0 +1,1 @@
+select c.company_code,founder, count(distinct lead_manager_code), count(distinct senior_manager_code), count(distinct manager_code), count(distinct employee_code) from Employee E join Company c on E.company_code=c.company_code group by c.company_code,founder order by c.company_code;

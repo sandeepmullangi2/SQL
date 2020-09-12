@@ -1,0 +1,1 @@
+SELECT months * salary ||' '|| COUNT(*) FROM employee where months*salary = (SELECT MAX(months * salary) from employee) GROUP BY months*salary;

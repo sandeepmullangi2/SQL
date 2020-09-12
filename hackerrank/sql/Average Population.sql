@@ -1,0 +1,1 @@
+select cast(avg(population) as signed) from city;
