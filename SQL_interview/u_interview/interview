@@ -1,0 +1,91 @@
+1)Pivot data without using inbuilt functions
+
+with `tab` as
+(  
+    select 'sandeep' as name , 'english' as sub_name, 100 as marks 
+    union all  
+    select 'sandeep' as name, 'hindi' as sub_name, 150 as marks  
+    union all 
+    select 'sandeep' as name, 'maths' as sub_name, 60 as marks
+)
+select name, max(case when sub_name='english' then marks end ) as english,
+max(case when sub_name='hindi' then marks end ) as hindi,
+max(case when sub_name='maths' then marks end ) as maths 
+from tab group by name
+
+
+2)Unpivot data without using inbuilt functions
+
+with `tab` as 
+(
+    select 'sandeep' as name, 100 as english, 150 as hindi, 60 as maths
+)
+select name, 'english' as sub_name, english as marks from tab
+union all 
+select name, 'hindi' as sub_name, hindi as marks from tab
+union all 
+select name, 'maths' as sub_name, maths as marks from tab
+
+
+3)Given several events of the driver find the idle time percentage of each driver on each day
+with `tab` as
+(
+    select 'login' as event, '2021-01-01 10:00:00' as ts, 'd1' as driver_id  
+    union all
+    select 'trip_start' as event, '2021-01-01 12:00:00' as ts   , 'd1' as driver_id   
+    union all 
+    select 'trip_end' as event, '2021-01-01 12:30:00' as ts  , 'd1' as driver_id    
+    union all 
+    select 'trip_start' as event, '2021-01-01 13:00:00' as ts  , 'd1' as driver_id    
+    union all 
+    select 'trip_end' as event, '2021-01-01 13:30:00' as ts  , 'd1' as driver_id  
+    union all 
+    select 'logout' as event, '2021-01-01 13:30:00' as ts  , 'd1' as driver_id    
+    union all 
+    select 'login' as event, '2021-01-01 10:30:00' as ts  , 'd2' as driver_id  
+    union all 
+    select 'logout' as event, '2021-01-01 11:30:00' as ts  , 'd2' as driver_id    
+),
+`time_cal` as 
+(
+select *,case when (event='login' or event='trip_end') and 
+(lead(event,1) over (partition by driver_id, Date(ts) order by ts) = 'trip_start' or lead(event,1) over (partition by driver_id, Date(ts) order by ts) = 'logout')  
+then timestamp_diff(lead(Timestamp(ts),1) over (partition by driver_id, Date(ts) order by ts), Timestamp(ts), MINUTE) else 0 end as idle_time,
+case when event='trip_start' and lead(event,1) over (partition by driver_id, Date(ts) order by ts) = 'trip_end'
+then timestamp_diff(lead(Timestamp(ts),1) over (partition by driver_id, Date(ts) order by ts), Timestamp(ts), MINUTE) else 0 end as drive_time
+
+from tab
+)
+select driver_id, Date(ts), case when sum(drive_time)= 0 then 100 else sum(idle_time)*100/(sum(idle_time)+sum(drive_time))  end as percentage_driver_ideal 
+from time_cal
+group by driver_id, Date(ts)
+
+
+4)Debug the query for problem. If you have left table with all transactions(CC,DB,Cash) and there is another table with only cash transactions. we need to find % of 
+transactions with mode of payment being cash which are in dollars. Does below query is possible to do the calculation?
+
+select 
+all_transactions.payment_amount,
+all_transactions.payment_id,
+cash_transactions.payment_amount
+all_transactions left join cash_transactions
+where cash_transactions.currency='$'
+
+Here when you have where clause, we will be missing all CC,DB transactions even after doing left join as currency wont be present for CC,DB transactions in this particular case.
+We should move where clause to case statement so that none of the values will be missed and we can get all details.
+case when cash_transactions.currency='$' then cash_transactions.currency='$' else 0
+
+Now sum(case when cash_transactions.currency='$' then cash_transactions.currency='$' else 0) / sum(cred+debit) should give percentage of cash transactions
+
+
+5) Find frequency of numbers 
+a=[1,2,4,1,1,1,11,1,4567,345,2,1]
+d={}
+for i in a:
+    d[i]=d.get(i,0)+1
+    
+Time comp:O(n)
+Space comp:O(n)
+
+6)What are some hive optimisations you have done
+
