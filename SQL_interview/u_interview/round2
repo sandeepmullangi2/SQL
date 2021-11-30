@@ -6,6 +6,81 @@
 6)When data write to orc/parquet did you face any issues? like memory issues or any issues?
 7)What are the pain points to write to columnar file
 8)Have partitions and on one partition we have multiple files. If we filter with uid how do you ensure it goes to only single file and search assuming file is in parquet?
+partition: /datestr='2021-11-01'/
+
+file_1.parquet
+file_2.parquet
+file_3.parquet
+..
+..
+file_10.parquet
+
+-- 
+
+trip_uuid
+
+
+-- 
+
+
+trip_uuid
+
+Answer might be since parquet stores min and max for each field so parsing will be easy if its number but uuid is alphanumeric. so if you want to ensure it hits only single file when queried may be create ahsh of uuid and store that value un column. so parquet stores min and max of that column and will take you to correct file when queried with UUID
+
 9)How do you do quality checks
 10)where you put your data quality checks. You dont want to write to table used by downstream with anamolies. what will you use and where will you use?
 https://towardsdatascience.com/z-score-for-anomaly-detection-d98b0006f510
+
+10)without lead lag find total miles driven
+Driver Location / Driven Distance
+
+We have log of “driver_locations”
++-----------+-----------------+------------------+---------+-------------+------------+
+| driver_id | driver_latitude | driver_longitude | country |  timestamp  | product_id |
++-----------+-----------------+------------------+---------+-------------+------------+
+|         1 |           28.35 |            76.52 | IN      |    15603953 | A          |
+|         1 |           28.36 |            77.16 | IN      |    se | A          |
+|         1 |           28.49 |            77.66 | IN      |    15603959 | A          |
+|         1 |           28.52 |            77.77 | IN      |    15603969 | A          |
+|         2 |           21.37 |            72.89 | IN      |    15603952 | B          |
+|         2 |           21.38 |            72.63 | IN      |    15603955 | B          |
++-----------+-----------------+------------------+---------+-------------+------------+
+
+And table of product IDs and product Names
++------------+--------------+
+| product_id | product_name |
++------------+--------------+
+| A          | UberX        |
+| B          | UberGO       |
+| C          | UberXL       |
++------------+--------------+
+
+Output:
+
++------------+---------+----------------------------------+
+| date       | product | distance_driven_in_miles |
++------------+----------+-----------------------------------+
+| 2019-11-01 | UberX      | 1007.45                  |
+| 2019-11-01 | UberGO   | 896.95                  |
+| 2019-11-01 | UberXL      | 230.15                  |
+| 2019-11-02 | UberX      | 1237.11                  |
+| 2019-11-02 | UberGO   | 960.25                  |
+| 2019-11-02 | UberXL      | 112.45                  |
++------------+----------+-----------------------------------+
+
+
+
+1. What is the distance driven for each product for eaco-------o(t2-B)
+A --> (lat1, long1)
+B --> (lat2, long2)
+
+
+-- GET_DISTANCE(lat1,long1,lat2,long2)	-- returns the distance in miles.
+-- GET_DATE(epoch_timestamp) - returns the date in YYYY-MM-DD format
+
+Answer: 
+select row_number() over (partition by driver,date order by timestamp desc )rownumber
+join 
+select row_number() over (partition by driver,date order by timestamp desc )rownumber1
+on rownumber=rownumber1-1
+
