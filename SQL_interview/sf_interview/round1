@@ -1,0 +1,68 @@
+ question1:
+ 3 tables are ingested at different timings and how does the downstream effectively consume data. The 3 tables has common key but all 3 tables are not ingested at same time so keys mismatch will be there. How do you do?
+ Answer:Full outer join is expensive. So formulate control table withh all unique keys and keep this as left table and do all leftjoins with all other 3 tables.
+ 
+ question2:
+ how do you slow down when writing data to oracle from spark?
+ Answer: Use right number of partitions (df.repartition) and also you can use batchsize option
+ https://stackoverflow.com/questions/55708079/spark-optimise-writing-a-dataframe-to-sql-server/55717234
+ 
+ question3:
+ Find all people who earn more than 2000$ in 2019 and earn more than 3000$ in 2020
+ with `tab` as
+(  
+    select 'cust1' as customer_name , 234 as product_id, 2000 as order_amount, '2019-08-01' as order_date 
+    union all  
+      select 'cust1' as customer_name , 123 as product_id, 2500 as oder_amount, '2020-01-15' as order_date  
+    union all 
+      select 'cust1' as customer_name , 234 as product_id, 2000 as oder_amount, '2019-08-01' as order_date 
+      union all 
+      select 'cust1' as customer_name , 234 as product_id, 3000 as oder_amount, '2020-08-01' as order_date 
+    union all  
+        select 'cust2' as customer_name , 234 as product_id, 1000 as order_amount, '2019-08-01' as order_date 
+    union all  
+      select 'cust2' as customer_name , 123 as product_id, 100 as oder_amount, '2020-01-15' as order_date  
+    union all 
+      select 'cust2' as customer_name , 234 as product_id, 2000 as oder_amount, '2019-08-01' as order_date 
+      union all 
+      select 'cust2' as customer_name , 234 as product_id, 300 as oder_amount, '2020-08-01' as order_date 
+      union all 
+        select 'cust3' as customer_name , 234 as product_id, 100 as order_amount, '2019-08-01' as order_date 
+    union all  
+      select 'cust3' as customer_name , 123 as product_id, 500 as oder_amount, '2020-01-15' as order_date  
+    union all 
+      select 'cust3' as customer_name , 234 as product_id, 200 as oder_amount, '2019-08-01' as order_date 
+      union all 
+      select 'cust3' as customer_name , 234 as product_id, 300 as oder_amount, '2020-08-01' as order_date 
+)
+select customer_name,sum(order_amount )
+from
+(
+select *, case when EXTRACT(year FROM Date(order_date) )=2019 and order_amount>=2000 then 1
+            when EXTRACT(year FROM Date(order_date) )=2020 and order_amount>=3000 then 1
+             end as is_sale
+            from `tab`
+)
+where is_sale=1
+group by customer_name
+having count(distinct EXTRACT(year FROM Date(order_date) )) > 1
+
+question4: Find if number is palindrome
+num = 1234
+reversed_num = 0
+
+while num != 0:
+    digit = num % 10
+    reversed_num = reversed_num * 10 + digit
+    num //= 10
+
+if num==reversed_num:
+    print('palindrome')
+else:
+    print('not palindrome')
+    
+ 
+question5:what kind of optimizations you have done in hive/bigquery
+answer: partitioning/clustering/bucketing/map side join/broadcast join/avoid select */avoid table count/predicate push down or filter and then join
+ 
+ 
