@@ -1,0 +1,89 @@
+Input:
+id |  team_1         |  team_2         |  winner
+------------------------------------------------------
+1  |  India          |  Australia      |  India
+2  |  South Africa   |  England        |  England
+3  |  New Zealand    |  Sri Lanka      |  New Zealand
+4  |  England        |  India          |  India
+5  |  Australia      |  South Africa   |  Australia
+6  |  Sri Lanka      |  India          |  India
+7  |  New Zealand    |  Australia      |  New Zealand
+8  |  England        |  New Zealand    |  England
+9  |  Sri Lanka      |  South Africa   |  South Africa
+
+Output:
+team          |   played  |   won |   lost  |   points
+------------------------------------------------------
+India         |   3       |   3   |   0     |   6
+England       |   3       |   2   |   1     |   4
+New Zealand   |   3       |   2   |   1     |   4
+Australia     |   3       |   1   |   2     |   2
+South Africa  |   3       |   1   |   2     |   2
+Sri Lanka     |   3       |   0   |   3     |   0
+
+
+select team, sum(matches_played) as played, sum(matches_won) won, sum(matches_lost) as lost, sum(matches_won)*2 as points
+from
+(
+select team1, count(1) as matches_played,
+sum(case when team_1=winner then 1 else 0 end )as matches_won,
+sum(case when team_1!=winner then 1 else 0 end) as matches_lost
+from matches
+group by team1
+union 
+select team2, count(1) as matches_played,
+sum(case when team_2=winner then 1 else 0 end ) as matches_won,
+sum(case when team_1!=winner then 1 else 0 end) as matches_lost
+from matches
+group by team2
+)
+group by team
+
+
+
+Q2:
+Input: List of tasks with start and end dates. Two tasks are considered related if one starts on the same day as other finishes. Related tasks are consolidated into projects. List all projects with start and end dates.
+
+task_id | start_date | end_date
+-------------------------------
+1 | 2021-10-01 | 2021-10-02
+2 | 2021-10-02 | 2021-10-04
+3 | 
+
+6 | 2021-10-27 | 2021-10-29
+7 | 2021-10-30 | 2021-10-31
+
+Output:
+start_date | end_date
+-----------------------
+2021-10-01 | 2021-10-04
+2021-10-13 | 2021-10-17
+2021-10-27 | 2021-10-29
+2021-10-30 | 2021-10-31
+
+
+
+select start_date, max(lead_ed) as end_date 
+from
+(
+select start_date, end_date, lead(start_date,1) as lead_st ,lead(end_date,1) as lead_ed
+)
+where date_diff(end_date,lead_st)=0
+group by start_date
+
+
+
+Q3:
+arr[] = [6,7,8,9,1,2,3,4,5]
+i=7
+output: 2
+i=11
+output: -1
+
+arr[] = [8,9,1,2,3,4,5,6,7]
+i=7
+output: 9
+i=11
+output: -1
+i=9
+output: 2
