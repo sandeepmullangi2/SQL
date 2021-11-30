@@ -1,0 +1,11 @@
+1)pain points in hbase
+2)Did you use bulk load or what to load data in hbase
+3)Did you use compaction?
+4)What is the structure of your table and rowkey
+5)hive file format. Why text/orc/parquet?
+6)When data write to orc/parquet did you face any issues? like memory issues or any issues?
+7)What are the pain points to write to columnar file
+8)Have partitions and on one partition we have multiple files. If we filter with uid how do you ensure it goes to only single file and search assuming file is in parquet?
+9)How do you do quality checks
+10)where you put your data quality checks. You dont want to write to table used by downstream with anamolies. what will you use and where will you use?
+https://towardsdatascience.com/z-score-for-anomaly-detection-d98b0006f510
