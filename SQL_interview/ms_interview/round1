@@ -124,6 +124,8 @@ def if_str_is_permuation(str1,str2):
 9) What is lambda architecture in big data
 10) what is logistic regression
 11) Why is precision and recall when accuracy is present
+12) What are variables in spark (accumulators, broadcast variables)
+
 
 
 
