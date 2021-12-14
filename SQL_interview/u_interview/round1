@@ -13,6 +13,15 @@ max(case when sub_name='hindi' then marks end ) as hindi,
 max(case when sub_name='maths' then marks end ) as maths 
 from tab group by name
 
+-- select name ,english, hindi, maths 
+-- from tab 
+-- pivot
+-- (
+--     sum(marks)
+--     for sub_name 
+--     in ('english','hindi','maths')
+-- )
+
 
 2)Unpivot data without using inbuilt functions
 
@@ -25,6 +34,16 @@ union all
 select name, 'hindi' as sub_name, hindi as marks from tab
 union all 
 select name, 'maths' as sub_name, maths as marks from tab
+
+-- select name, sub_name,marks
+-- from `tab`
+-- unpivot
+-- (
+--     marks 
+--     for sub_name 
+--     in (english,hindi,maths)
+
+-- )
 
 
 3)Given several events of the driver find the idle time percentage of each driver on each day
