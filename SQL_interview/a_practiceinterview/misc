@@ -1,0 +1,255 @@
+u26 Jul 2021
+1)Given two strings s1 and s2, tell if s1 is a rotation of s2
+2)Inputs are one string "pineapplepenapple" and other is string list which has ["apple","pen","applepen","pine","pineapple"]. 
+Print how many string combinations you can use from list to create the original string.
+
+
+apple 
+3)Rental car service design question
+
+u30 Aug 2016
+1)Implement a function to calculate the square root of any given number up to 2 points precision
+
+a25oct 2021
+1)sum list only until encounter a specific value
+2)flatten list of lists or tuples to single list
+3)sorting
+4)number of times an item appears
+5)values in one not the other
+6)distinct values
+
+a8 jun 2021
+1)There's a large table with 3 columns, datetime, employee and customer_response, which is a free text column. Say there is phone number information embedded in the customer_response column. How to get the top 10 employees with the most phone numbers found in the customer_response column?
+
+
+a16 jun 2021
+1)  write a function to sort an array so it produce only odd numbers.
+
+a8 may 2021
+1)1 table with player_id, log in date, and 2 other fields and was asked to calculate first day retention rate. First day retention rate is defined as the player who log in the 2nd straight day, after the first ever time they log into game
+
+SQL:
+1. controlled subqueries
+2. cte (row_number, rank vs dense_rank etc)
+3. The order that a sql is processed from select to order by
+4.SQL performance tuning!
+5. Slowly changing dimensions
+6. Star vs Snowflake
+7. Data Modeling
+
+Python range
+Python error handler
+Python date library
+
+first round - written: 3 sql and one about what will you do to improve the fastness of an insert on a huge table
+second round -
+get the players with highest streak
+get the employee details who has maximum members in a team.
+python-return the numbers which have maximum count in a list
+round 3: behavioral questions and 1 question on python lists. from the 2 lists get the numbers that are common , and return the numbers in the following way.
+[1,2,3,3,1,1,1],[1,1,2,2,3] - return [1,1,2,3]
+
+
+
+A satellite television provider XYZ is looking forward to your help in retrieving some critical information from its data warehouse. The satellite television provider provides television channels bundled in packages to its subscribers.
+The below diagram explains the key data tables and the relation-ship between them:
+[Don't have diag]
+D_SUBSCRIBER is a dimension table that has details of subscribers (customers).
+D_PACKAGES is a dimension table that has details of various package offered by the provider
+F_SUBSCRIPTIONS is a fact table that stores package subscriptions by each subscriber. A subscriber can have multiple records in this table during his lifetime
+Please note the following business rules
+• There are 2 types of packages. BASE pack and ADDON pack (which is mentioned in PACKAGE_TYPE attribute)
+• Subscriber will have at least 1 BASE pack. They can have 0 or more ADDON packs
+• A package is considered active for a subscriber if PACKAGE_SUB_END_DT in F_SUBSCRIPTIONS is NULL. Otherwise the package is not active for the subscriber
+• A subscriber is considered to be active if there is a BASE pack linked to him with NULL PACKAGE_SUB_END_DT. Otherwise the subscriber is considered to be inactive.
+• Each package has a PRICE_PER_DAY which is the fee for the package for a single day usage. A subscriber’s monthly fee is the PRICE_PER_DAY of each of his active packages multiplied by No. of active days in that month that he has been on that package. The fee is considered as revenue to the business.
+Please find below sample data for each tables for better understanding
+
+• D_SUBSCRIBER
+D_SUBSCRIBER_ID SUBSCRIBER_NAME SUBSCRIBER_JOINING_DT
+1E+08 Rahul Agarwal ########
+1E+08 Ajay Mehta ########
+1E+08 Pranab Shetty ########
+
+
+• D_PACKAGES
+D_PACKAGE_ID PACKAGE_NAME PACKAGE_TYPE PRICE_PER_DAY
+131 Metro Base ₹ 4
+132 Dhamaal Cricket Base ₹ 5
+133 South Special Base ₹ 4
+134 Supreme Kids Base ₹ 3
+231 Hindi Movies Addon ₹ 1
+232 English News Addon ₹ 2
+233 English Entertainment Addon ₹ 2
+
+• F_SUBSCRIPTIONS
+
+D_SUBSCRIBER_ID D_PACKAGE_ID PACKAGE_START_DT PACKAGE_END_DT
+1E+08 131 ########
+1E+08 231 ######## 19-Jan-15
+1E+08 233 ########
+1E+08 133 ######## 1-Jun-15
+1E+08 232 17-Jan-15 1-Mar-15
+1E+08 131 ########
+
+The business relies on you to pull out important data to get better understanding of the business and subscriber’s. For each of the questions below please write a SQL query. Please follow the below ground rules for answering the below questions
+
+1) The marketing team wants to run a campaign to bring back subscribers who are no longer active. Write a query to pull out subscribers who are no longer active?
+2) The products team wants to understand subscribers who have at least 2 Add on Packages. Write a query to pull out subscribers who have at least 2 active ADDON pack?
+
+3) The marketing team believes that people who subscribe to ‘English News’ package should also be needing ‘English Entertainment’ package. Write a SQL to pull out subscribers who have active ‘English News’ package but do not have active ‘English Entertainment’ package
+
+4) The finance team wants to track revenue generated by each subscriber.
+
+5) Write a SQL to get total revenue
+generated by each subscriber in the year 2014?
+
+6) Write a query to identify Top 3 base packages (in terms of revenue collected) for each month in 2014?
+
+
+Given employee and manager table, retreive employeeid and their skip level managers
+Given product and orders, get current month rank and previous month rank
+given books and languages, get books in more than 50% of the languages,
+
+Difference between SMP and MPP,
+fact table, dimension table, performance issues
+
+
+{ a:{b:c,d:e} } becomes {a_b:c, a_d:e} ( not, a:"b:c,d:e" }
+
+
+How to count occurrences of a word in a sentence
+
+facebook
+Write a function to return the number of times a character appears in a string
+returns a list containing mismatched words in two strings
+
+
+
+general
+---------
+angle(h, m)
+
+angle(4,20)
+>> 10
+
+angle(3,0)
+>>90
+
+angle(4,0)
+>> 120
+
+angle(3:15)
+>> 7.5
+
+
+
+
+Full angle =  h*30 = 120
+Small angle = m  ()
+
+
+60minutes-->360 degree
+Minutes hand is at 20 minutes
+20 minutes--->120 degrees
+
+
+
+4hours or 240 minutes-->360 degrees
+                 20minutes--->30 degrees
+
+60minutes → 30 degrees
+260 minutes→
+
+If m > 0
+Total minutes= h*60 + m
+ Minute angle = total minutes/2   = 130
+Hour angle = h*30 
+
+320/2=160
+
+
+
+12 hours ki 360 degrees 
+1 hour ki 30 degrees 
+
+
+720 minutes ki 360 degrees 
+1 minute ki 0.5 degree
+
+angle(3:15)
+>> 7.5
+
+
+90 degrres + 7.5
+
+
+general1
+--------
+top perf jobs
+comb how many applies+how many clicks + how many impressions
+
+
+top 10 performing jobs for country usa
+
+
+select country, title, max(value)
+from
+(
+select title, country, sum (applies) +sum(clicks) + sum(impressions) as value
+from fact_job_kpis join dim_impression on a.impreesionkey=b.locationkey
+join title c on a.title_key=c.title_key
+group by title, country
+)a
+group by title
+
+bigdata usa 10
+bigdata ind 5
+java usa 20
+java ind 10
+
+
+general2
+-----------
+map-flatmap
+watermark
+beam pipeline
+spark pipeline 
+bq region change
+bq slow query
+dataproc vs dataflow
+pubsub
+
+
+connectors are many--read from source and write to target
+pcollection--distributed
+
+a=[1,2,3,4,5,6,7,8,9]
+
+123 to w1
+489 to w2
+ptransform--transform in distributed way
+
+factory
+singleton
+abstract factory(complexx)
+builder pattern
+
+https://www.comp.nus.edu.sg/~lingtw/cs4221/dw.pdf
+https://www.youtube.com/watch?v=3OcS2TMXELU
+https://cdn2.hubspot.net/hubfs/392937/cloud-data-management.pdf?__hstc=158613477.45bf1d3ef504e7b93ca347a156e3f60e.1632923694184.1632923694184.1632923694184.1&__hssc=158613477.1.1632923694184&__hsfp=3286707902&hsCtaTracking=2bc63681-fa55-45b6-ba27-6087d2913b2a%7Cea749e12-ad4f-4b39-9429-5d0aa1e94390
+https://www.indeed.com/career-advice/interviewing/data-warehousing-interview-questions
+https://www.reddit.com/r/dataengineering/comments/pmtenl/data_warehouse_interview_question/
+https://www.reddit.com/r/dataengineering/comments/n2jm1s/what_are_the_most_commond_advanced_sql_interview/
+http://databaseanswers.org/tutorials.htm
+https://www.naukri.com/learning/articles/data-warehouse-interview-questions-and-answers/
+
+
+
+
+
+
+
+            
+
+

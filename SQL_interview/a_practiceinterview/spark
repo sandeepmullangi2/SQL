@@ -1,0 +1,391 @@
+spark
+------
+driver
+executor
+nodes
+cluster
+
+core/slot/thread
+dataset
+data partition
+
+driver runs in its own JVM giving out instructions 
+Each executor run in it own JVM and multiple executors can run in single node
+In the cluster entire dataset is aprtitioned into logical chunks
+num of cores is assigned to executor and that determines how many tasks can be run on executor
+so the total num of cores available in the cluster determines parallelism. the number of cores assigned to an exector determines how many parallel 
+tasks can be run within one JVM
+
+job-->each job will have stages-->each stage will have tasks
+
+RDD/dataframe/dataset
+
+rdd-->2011-->fundamental abstarction-->df(2013)-->ds(2015)
+
+rdd
+----------------
+low level api
+fundamental abstaraction on which spark was built
+offers control and flexibility
+reselient-->if failure get back rdd that was created
+immutable-->when transformation then creates new
+lazy evaluation-->unless action nothing happens
+doesnot infer schema
+when we do transformation, we get one RDD from another like a lineage
+
+
+when we wnat to perform low level transformation and control on dataset
+data is unstructured
+dont care about imposing schema
+can forgo some optimization
+
+
+dataframe and dataset unified to dataset---> untyped dataframe   dynamically Strong typing means that variables do have a type and that the type matters when performing operations on a variable
+                                             typed   dataset  
+
+
+dataframe 
+---------------
+high level api
+immutable distributed collection of data
+data in organized columns like table
+impose structure on distributed collection
+
+
+dataset
+-----------
+high level API
+type safe, object oriented programming interface
+compile time type safety
+sum(), avg() etc functions are there
+
+
+plan
+-----
+
+DF/SQLquery--->unresolved logical plan--->it looks at catalog and prepares logical plan--->optimized logical plan (doing filter first)--->physical plan-->based on cost selects physical plan-->RDDs
+
+
+spark memory management
+-----------------------
+spark is memory based data processing framework hence memory plays a central role
+effecient memory usage is key to good performance therefore it is important  to understand how spark does memory management
+
+reserved memory(300 mb) that doesnot participate in spark memory calculations
+user memory --> this can be used to store data structures
+spark memory/unified region--> execution memory (computations like shuffle, join) + storage memory(caching and propagating internal data across cluster)
+spark memory+user memory = java heap memory 
+
+
+unified memory management -->instead of specifying execution and storage memory as 2 seperate chunks its specified as single unified space 
+that they both can share
+-->can use unutilized memory, preven disk spills, variety of workload
+
+
+on-heap memory(GC is there)  off-heap memory (GC is not there)
+
+memory consumption of dataset-->1) create RDD put in cache and look at storage page in web UI 2) use sizeestimator estimate emthod
+
+Tuning considerations
+1) find memory consumption of dataset
+2) if its large serialize RDD storage (kyro)
+3) Tune garbage collection
+4) level of parallelism
+5) broadcasting
+
+
+spark performance tuning
+-------------------------
+code
+configuration
+file format
+spark optimizations
+
+
+what effects
+1) shuffle is spark's mechanism for redistributing data so that its grouped differently across partitions
+2) 2 types of transformation narrow(data exists on node) and wide(data needs to mode to other node-needs shuffling)
+3) Hardware (there are disk writes too)--disk/cores/memory/nw speed
+
+code
+----
+1) Logs tell whole story (Tabs-->job, stage, executor, sql, storage)---task quartile (gc time/input size or records/shuffle read size)
+2) data scans should be minimized (partitioning, bucketing, partition pruning, filtering, avoid data skewness)
+3) join optimization -->safest join (sort merge) fastest join (broadcast)
+4) avoid (count, repartition, distinctcount)
+5) dropduplicates befor join or groupby
+6) persisting/caching helps in reusing data in subsequent actions on that dataset (spark's cache is fault tolerant)--->may be GC overhead/possible slow down/disk spills
+7) broadcast variables when we need read only -->read only variable cached on each machine rather tahn shipping a copy of it with tasks
+8) Accumulators --> perform counters (eg num of corrupted records)
+9) for each is bad so use seq.par.foreach is better
+10) spark udf should be avoided. auto optimisation wont work. it works on each row
+11) hardware(kind of disk/ nw speed /cores)
+
+unravel tool
+
+configuration
+-------------
+1) spark supports parquet+ORC+Avro but best is parquet+snappy
+2) parallelism (spark.default.parallelism  and spark.sql.files.minPartitonNum)
+3) Garbage collection (directly proportion to java objects) It has old gen and new gen 
+4) Serialization and deserialization (udf/ writing to disk)--->kyro-->
+5) Dynamic allocation is good for multitenant environment
+6) num of exector/ executor memory/ no: of cores
+7) off-heap memory can be used though its slow and also no GC
+8) Disk spills avoid (spark.shuffle.file.buffer, compress, snappy blocksize)
+
+file format
+-----------
+1) structured (parquet), semi(xml,json), unstructured(txt,csv)
+2) OLTP(entire row operation) vs OLAP(small number of columns we do alrge operation)
+3) parquet (row group and then inside it all columns are stored and then pages ) what is range of data that is stored (min and max)
+4) predicate pushdown 
+5) we can skip non relevant data very quickly
+6) supports nested data structures
+7) flexible options and efficient encoding schemes
+
+spark 3.0 enhancements
+-------------------------
+1) dynamic partition pruning 
+filter/skip data that is not needed
+fact table (patitioned over multiple columns) and dim table(non partitioned)
+2) Adaptive query execution
+rule based and then CBO and then now based on run time statistics  
+it reduces num of reducers by reducing num of shuffle partitions
+optimises physical execution plan eg: converting sort merge join broadcasthash join 
+handle skew join in run time
+3) SQL join hints for all joins..before only broadcast join
+4) structured streaming (tab added) and detailed statistics
+
+https://www.unraveldata.com/resources/spark-troubleshooting-part-1-ten-challenges/
+https://stackoverflow.com/questions/58110450/how-can-i-debug-why-my-dataflow-job-is-stuck
+
+
+Bigquery optimizations
+-----------------------
+seperation of storage and compute 
+data is stored in colusses 
+query runs in stages over a massive farm of compute units called slots which are units of computational capacity
+BQ automatically calculates how many stages are needed for each query 
+Data moves from storage to query server at lightening speed over petabit scale called jupiter network
+shuffle stored in memory
+The queries are routed to query master which contacts metadata server to figure out exactly where the physical data resides and comes up with 
+initial execution plan
+
+1) use necessary columns in selects
+2) use appoximate functions where posiible
+3) use where to filter data from large tables early 
+4) improve the effeciency of joins 
+broadcast
+hash join 
+self joins--->very expensive/use windowing instaead
+5) query plan info (wait/read/compute)--avg and max see variance
+6) partiion and clustering(high cardinality)
+7) materialized views and bi engine
+8) scripting + stored procedures
+
+
+https://www.youtube.com/watch?v=mwsAEPwQd6s
+https://www.tutorialspoint.com/map_reduce/map_reduce_quick_guide.htm
+
+
+
+
+
+
+
+
+
+python slow
+--------------
+“It’s the GIL (Global Interpreter Lock)”
+“It’s because its interpreted and not compiled”
+“It’s because its a dynamically typed language”
+
+cloud tasks
+-----------
+1) send_sms-->send_sms_by_query-->
+I have written entire notification orchestrator using cloud tasks. We have 3 queues here email, sms, phone. We have all data in bigquery table and 
+also we know the batch size with which we form payload and also we know queue and handler and all this information is passed while creating several 
+tasks where we pass payload and also handler so that each task can work on some piece of data.
+
+
+
+1) real query-->select query
+2) count query-->print--100
+3) select query paste in UI and get count -->200 or 100?
+
+15+24
+
+
+
+Find ordered rotated array:
+
+Arr1:
+8,9,10,1,2,3,5,6
+
+Arr2:
+9,8,1,2,3,4,5,6
+
+Arr3:
+8,4,5,6,8
+
+10,15,20,1,2,3,6
+1,2,3,4,5
+
+def find_if_ordered_array(li):
+  flag=0
+  for i in li:
+    if i > i+1:
+      flag=flag+1
+  if flag=1 or flag=0:
+    return 1
+  else:
+    return 0
+      
+SQL
+-----
+Two pairs (X1, Y1) and (X2, Y2) are said to be symmetric pairs if X1 = Y2 and X2 = Y1.
+
+Write a query to output all such symmetric pairs in ascending order by the value of X. List the rows such that X1 ≤ Y1.
+
+X    Y 
+---  ---          
+20   20
+20   20
+20   21
+23   22
+22   23
+23   22
+21   20
+10   10
+
+20 20  20 20
+20 20  20 20  
+20 21  20 21
+21 20  21 20
+10 10  10 10
+x     y
+--    ---
+20    20
+20    21
+22    23
+
+
+with ct1 as (
+  select x, y
+  from table1 
+  where x=y
+  group by x,y
+  having count(*) = 1
+),
+cte2 as (
+select * from table1 where x not in (select x form cte1) and y not in (select y from cte1)
+)
+select distinct b.x, a.y  from
+cte2 a join cte2 b on a.x=b.y and b.x=a.y 
+where a.x <> a.y
+
+
+
+
+https://profileportal-3vcuqw5apa-rj.a.run.app/#/login
+
+99999999902- sandeep without mfa
+99999999901-arun with mfa
+99999999903 - To be used
+
+
+
+reset password(
+
+
+https://profileportal-3vcuqw5apa-rj.a.run.app
+
+
+label in real portal sql field label  
+
+
+
+environment.uat.ts file base_url 
+main.ts file lo environment ni point cheyali
+api.service.ts
+app.module.ts
+
+11111133322
+
+
+
+implicit---> id_token or token
+authcode---->id_token/code/
+
+rules
+-----
+10 digits or 9 digits-->1234567890 converted to 123456789 (9 digits)
+7 digits--> 8 digits      1234567 converted to 01234567
+8 digits--> safe and 8 digits
+
+
+Test cases
+------------
+52497705-7
+6908953-X
+5777967-3
+5554827-1
+58965308-8
+58772368726788-3 (fake)
+
+
+total=150
+130%11===9
+
+https validation
+
+Authorization code
+------------------
+response_type
+scope
+redirect_uri
+
+
+https://${yourOktaDomain}/oauth2/default/v1/authorize?client_id=0oabucvy
+c38HLL1ef0h7&response_type=code&scope=openid&redirect_uri=https%3A%2F%2Fexample.com&state=state-296bc9a0-a2a2-4a57-be1a-d0e2fd9bb601
+
+
+
+
+client_credentials
+---------------------
+grant_type-client_credentials
+scope
+
+implicit flow
+-------------
+response_type---> is token. It could also be id_token or both.
+scope
+redirect_uri
+nonce
+https://${yourOktaDomain}/oauth2/default/v1/authorize?client_id=0oabv6kx4qq6h1U5l0h7&response_type=token&scope=openid&redirect_uri=&redirect_uri=https%3A%2F%2Fexample.com&state=state-296bc9a0-a2a2-4a57-be1a-d0e2fd9bb601&nonce=foo'
+
+
+
+
+https://developer.okta.com/docs/guides/implement-grant-type/clientcreds/main/#set-up-your-app
+
+
+
+Authorization code with pkce (impossible)
+-----------------------------
+response_type
+scope
+redirect_uri
+state
+code_challenge_method
+code_challenge
+
+https://${yourOktaDomain}/oauth2/default/v1/authorize?client_id=0oabygpxgk9lXaMgF0h7&response_type=code&scope=openid&redirect_uri=yourApp%3A%2Fcallback&state=state-8600b31f-52d1-4dca-987c-386e3d8967e9&code_challenge_method=S256&code_challenge=qjrzSW9gMiUgpUvqgEPE4_-8swvyCtfOVvg55o5S_es
+
+
+
+As far  as Housekeeping, I have deleted all App Engine services as it is confusing everyone. We usually follow git branches (dev, test, main) which will be deployed in dev, hom, prod environments. Having one branch will be problem when we want to test features so we want to have different branches. Please ignore all other feature branches and always refer dev,test,main github branches for latest code. We will delete all feature branches which are merged to dev going forward and that will be last in our priority list.
+ 

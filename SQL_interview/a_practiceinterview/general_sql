@@ -1,0 +1,581 @@
+WITH 
+#substitutiontable for accent removal
+accentlookups AS (
+  SELECT 
+  'ñ,Ñ,ç,á,é,í,ó,ú,à,è,ì,ò,ù,ä,ë,ï,ö,ü,ÿ,â,ê,î,ô,û,å,ø,Ø,Å,Á,À,Â,Ä,È,É,Ê,Ë,Í,Î,Ï,Ì,Ò,Ó,Ô,Ö,Ú,Ù,Û,Ü,Ÿ,Ç,Æ,Œ,æ,œ' AS accents,
+  'n,N,c,a,e,i,o,u,a,e,i,o,u,a,e,i,o,u,y,a,e,i,o,u,a,o,O,A,A,A,A,A,E,E,E,E,I,I,I,I,O,O,O,O,U,U,U,U,Y,C,AE,OE,ae,oe' AS latins
+),
+#for use pairing accented/unaccented characters
+accentpairs AS (
+  SELECT accent, latin FROM accentlookups, 
+    UNNEST(SPLIT(accents)) AS accent WITH OFFSET AS p1, 
+    UNNEST(SPLIT(latins)) AS latin WITH OFFSET AS p2
+  WHERE p1 = p2
+),
+
+#substitution for getting rid of unwanted accents in email by converting to ; which will get stripped out later 
+`accentlookups-strip` AS (
+  SELECT 
+  'ñ,Ñ,ç,á,é,í,ó,ú,à,è,ì,ò,ù,ä,ë,ï,ö,ü,ÿ,â,ê,î,ô,û,å,ø,Ø,Å,Á,À,Â,Ä,È,É,Ê,Ë,Í,Î,Ï,Ì,Ò,Ó,Ô,Ö,Ú,Ù,Û,Ü,Ÿ,Ç,Æ,Œ,æ,œ' AS accents,
+  ';,;,;,;,;,;,;,;,;,;,;,;,;,;,;,;,;,;,;,;,;,;,;,;,;,;,;,;,;,;,;,;,;,;,;,;,;,;,;,;,;,;,;,;,;,;,;,;,;,;,;,;,;, ' AS latins
+),
+#for use  stripping out unaccented characters in email
+`accentpairs-strip` AS (
+  SELECT accent, latin FROM `accentlookups-strip`, 
+    UNNEST(SPLIT(accents)) AS accent WITH OFFSET AS p1, 
+    UNNEST(SPLIT(latins)) AS latin WITH OFFSET AS p2
+  WHERE p1 = p2
+),
+
+#union join of the two registrant and users, adding accent scrubbing _clean and _match name fields, ifnulling phone, email
+`project.dataset.table-ru` AS (
+SELECT timestamp as etimestamp,'r' as registration_type,is_user_and_registrant_same, document_id,profile_id, 
+IFNULL(email,'') as email, IFNULL(phone,0) AS phone,phone_type, preferred_notification,  
+first_name,last_name,
+#for matching we are going to trim, upper, then convert accented characters to latin,then strip all characters but letters and spaces 
+trim(regexp_replace((SELECT STRING_AGG(IFNULL(latin, char), '')
+    FROM UNNEST(SPLIT(upper(trim(ifnull(first_name,''))), '')) char
+    LEFT JOIN accentpairs
+    ON char = accent),"[^a-zA-Z ]+","")) AS first_name_match,
+trim(regexp_replace((SELECT STRING_AGG(IFNULL(latin, char), '')
+    FROM UNNEST(SPLIT(upper(trim(ifnull(last_name,''))), '')) char
+    LEFT JOIN accentpairs
+    ON char = accent),"[^a-zA-Z ]+","")) AS last_name_match,
+#for sending to external users we will leave mixed case otherwise the same as the match version
+regexp_replace((SELECT STRING_AGG(IFNULL(latin, char), '')
+    FROM UNNEST(SPLIT(trim(ifnull(first_name,'')), '')) char
+    LEFT JOIN accentpairs
+    ON char = accent),"[^a-zA-Z ]+","") AS first_name_clean,
+trim(regexp_replace((SELECT STRING_AGG(IFNULL(latin, char), '')
+    FROM UNNEST(SPLIT(trim(ifnull(last_name,'')), '')) char
+    LEFT JOIN accentpairs
+    ON char = accent),"[^a-zA-Z ]+","")) AS last_name_clean,
+middle_initial,trim(ifnull(county,'')) as county,
+ifnull(JSON_EXTRACT(health_care_setting_member, '$.value'),'') as health_care_setting_member_final,
+health_care_setting_index,
+last_responder_key,
+last_responder_value,
+
+outside_healthcare_professional_key,
+outside_healthcare_professional_value,
+
+is_ems_provider_or_first_responder,
+is_correctional_setting,
+
+early_learning_child_care_setting_key,
+early_learning_child_care_setting_value_member,
+early_learning_child_care_setting_value_index,
+
+public_or_private_school_key,
+public_or_private_school_value_member,
+public_or_private_school_value_index,
+eligibility_status,
+ifnull(date_of_birth,cast('1800-01-01' as timestamp)) as date_of_birth,
+age_45_64_health_conditions,
+age_16_44_health_conditions,
+is_low_income,
+is_displaced_by_wildfire,
+is_houselessness,
+is_frontline_worker,
+is_multigeneration,
+work_applicable,
+is_pregnant,
+twilio_unsub_sms,
+gvo_unsub_sms,
+sendgrid_unsub_email,
+gvo_unsub_email,
+provider_export_status,
+gender,
+describe_your_gender,
+are_you_transgender_key,
+race_ethnicity_tribal,
+racial_or_ethnic_identity,
+primary_racial,
+language_at_home,
+language_of_communication,
+language_of_write,
+interpreter_for_communication_key,
+interpreter_for_communication_value,
+fluency_in_english,
+deaf_or_difficulty_in_hearing_key,
+deaf_or_difficulty_in_hearing_value,
+blind_or_difficulty_in_seeing_key,
+blind_or_difficulty_in_seeing_value,
+difficulty_walking_or_climbing_key,
+difficulty_walking_or_climbing_value,
+difficulty_concentrating_remembering_key,
+difficulty_concentrating_remembering_value,
+difficulty_dressing_or_bathing_key,
+difficulty_dressing_or_bathing_value,
+difficulty_learning_key,
+difficulty_learning_value,
+difficulty_communicating_key,
+difficulty_communicating_value,
+difficulty_doing_errands_alone_key,
+difficulty_doing_errands_alone_value,
+difficulty_with_mood_key,
+difficulty_with_mood_value,
+language_at_home_q,
+racial_or_ethnic_identity_q,
+vaccine_information,
+vaccine_services
+FROM `firestore_export.registrants_schema_registrants_explode_latest`
+#where profile_id='XzC60HsC46halE4twFUWnohjWry2'
+union all 
+
+SELECT timestamp as etimestamp,'u' as registration_type,false as is_user_and_registrant_same,document_id,'' as profile_id, 
+IFNULL(email,'') as email, IFNULL(phone,0) AS phone,
+phone_type, preferred_notification, 
+first_name,last_name,
+#for matching we are going to trim, upper, then convert accented characters to latin,then strip all characters but letters and spaces 
+trim(regexp_replace((SELECT STRING_AGG(IFNULL(latin, char), '')
+    FROM UNNEST(SPLIT(upper(trim(ifnull(first_name,''))), '')) char
+    LEFT JOIN accentpairs
+    ON char = accent),"[^a-zA-Z ]+","")) AS first_name_match,
+trim(regexp_replace((SELECT STRING_AGG(IFNULL(latin, char), '')
+    FROM UNNEST(SPLIT(upper(trim(ifnull(last_name,''))), '')) char
+    LEFT JOIN accentpairs
+    ON char = accent),"[^a-zA-Z ]+","")) AS last_name_match,
+#for sending to external users we will leave mixed case otherwise the same as the match version
+trim(regexp_replace((SELECT STRING_AGG(IFNULL(latin, char), '')
+    FROM UNNEST(SPLIT(trim(ifnull(first_name,'')), '')) char
+    LEFT JOIN accentpairs
+    ON char = accent),"[^a-zA-Z ]+","")) AS first_name_clean,
+trim(regexp_replace((SELECT STRING_AGG(IFNULL(latin, char), '')
+    FROM UNNEST(SPLIT(trim(ifnull(last_name,'')), '')) char
+    LEFT JOIN accentpairs
+    ON char = accent),"[^a-zA-Z ]+","")) AS last_name_clean,
+middle_initial,trim(ifnull(county,'')) as county,ifnull(JSON_EXTRACT(health_care_setting_member, '$.value'),'') as health_care_setting_member_final,
+health_care_setting_index,
+
+last_responder_key,
+last_responder_value,
+
+outside_healthcare_professional_key,
+outside_healthcare_professional_value,
+
+is_ems_provider_or_first_responder,
+is_correctional_setting,
+
+early_learning_child_care_setting_key,
+early_learning_child_care_setting_value_member,
+early_learning_child_care_setting_value_index,
+
+public_or_private_school_key,
+public_or_private_school_value_member,
+public_or_private_school_value_index,
+eligibility_status,
+ifnull(date_of_birth,cast('1800-01-01' as timestamp)) as date_of_birth,
+age_45_64_health_conditions,
+age_16_44_health_conditions,
+is_low_income,
+is_displaced_by_wildfire,
+is_houselessness,
+is_frontline_worker,
+is_multigeneration,
+work_applicable,
+is_pregnant,
+twilio_unsub_sms,
+gvo_unsub_sms,
+sendgrid_unsub_email,
+gvo_unsub_email,
+provider_export_status,
+gender,
+describe_your_gender,
+are_you_transgender_key,
+race_ethnicity_tribal,
+racial_or_ethnic_identity,
+primary_racial,
+language_at_home,
+language_of_communication,
+language_of_write,
+interpreter_for_communication_key,
+interpreter_for_communication_value,
+fluency_in_english,
+deaf_or_difficulty_in_hearing_key,
+deaf_or_difficulty_in_hearing_value,
+blind_or_difficulty_in_seeing_key,
+blind_or_difficulty_in_seeing_value,
+difficulty_walking_or_climbing_key,
+difficulty_walking_or_climbing_value,
+difficulty_concentrating_remembering_key,
+difficulty_concentrating_remembering_value,
+difficulty_dressing_or_bathing_key,
+difficulty_dressing_or_bathing_value,
+difficulty_learning_key,
+difficulty_learning_value,
+difficulty_communicating_key,
+difficulty_communicating_value,
+difficulty_doing_errands_alone_key,
+difficulty_doing_errands_alone_value,
+difficulty_with_mood_key,
+difficulty_with_mood_value,
+language_at_home_q,
+racial_or_ethnic_identity_q,
+cast(vaccine_information as boolean), 
+cast(vaccine_services as boolean)
+FROM `firestore_export.oregon_users_schema_oregon_users_explode_latest`
+) ,
+#adding emailscrubbed,phone_is_valid
+`project.dataset.table-ru1` AS
+(
+SELECT * except (email),lower(email) as email ,
+lower(trim(replace(trim(regexp_replace((SELECT STRING_AGG(IFNULL(latin, char), '')
+    FROM UNNEST(SPLIT(trim(replace(replace(trim(ifnull(replace(email,',',';'),'')),' ',''),'..',';'), ''))) char
+    LEFT JOIN `accentpairs-strip`
+    ON char = accent),"[^a-zA-Z0-9@!#$%&'*_+-/=?^`{|}~. ]+","")),'@@',';'),'.')) AS emailscrubbed,
+    if(cast(length(cast(ifnull(phone,0) as string)) as string)='10' and left(cast(ifnull(phone,0) as string),1)<>'1','Y','N') as phone_is_valid
+FROM `project.dataset.table-ru`,
+UNNEST(SPLIT(TRIM(REGEXP_REPLACE(health_care_setting_member_final, r'^\[|]$', ''), '"'),'","')) health_care_setting_member_final_1  
+#where last_name_match='LIMBRICK' AND first_name_match='A J' AND date_of_birth='1947-11-19 00:00:00 UTC'
+
+),
+# adding email_is_valid, valid_preferred_contact, date_of_birth_text, date_of_birth_mdy
+`project.dataset.table-ru2` AS
+(
+select etimestamp, registration_type, is_user_and_registrant_same,document_id, profile_id,email,emailscrubbed,phone_is_valid,phone,
+if(emailscrubbed=email and length(ifnull(email,''))>1 and instr(email,'@')>0
+        and instr(email,'@',instr(email,'@')+1)=0 #removes emails with two @ symbols
+        and instr(email,'.',instr(email,'@')+1)>0 #requires at least one . after the first @ symbol
+        ,'Y','N') as email_is_valid,
+        left(cast(date_of_birth as string),10) as date_of_birth_text,
+        concat(substring(left(cast(date_of_birth as string),10),6,2),'/',
+        substring(left(cast(date_of_birth as string),10),9,2),'/',left(cast(date_of_birth as string),4)) as date_of_birth_mdy,
+if(length(ifnull(first_name_match,''))>0 and length(ifnull(last_name_match,''))>0,'Y','N') as name_is_valid,
+phone_type,preferred_notification,first_name,last_name,first_name_match,last_name_match,
+first_name_clean, last_name_clean, middle_initial,county, eligibility_status,date_of_birth,
+twilio_unsub_sms,
+gvo_unsub_sms,
+sendgrid_unsub_email,
+gvo_unsub_email,
+provider_export_status,
+gender,
+describe_your_gender,
+are_you_transgender_key,
+race_ethnicity_tribal,
+racial_or_ethnic_identity,
+primary_racial,
+language_at_home,
+language_of_communication,
+language_of_write,
+interpreter_for_communication_key,
+interpreter_for_communication_value,
+fluency_in_english,
+deaf_or_difficulty_in_hearing_key,
+deaf_or_difficulty_in_hearing_value,
+blind_or_difficulty_in_seeing_key,
+blind_or_difficulty_in_seeing_value,
+difficulty_walking_or_climbing_key,
+difficulty_walking_or_climbing_value,
+difficulty_concentrating_remembering_key,
+difficulty_concentrating_remembering_value,
+difficulty_dressing_or_bathing_key,
+difficulty_dressing_or_bathing_value,
+difficulty_learning_key,
+difficulty_learning_value,
+difficulty_communicating_key,
+difficulty_communicating_value,
+difficulty_doing_errands_alone_key,
+difficulty_doing_errands_alone_value,
+difficulty_with_mood_key,
+difficulty_with_mood_value,
+language_at_home_q,
+racial_or_ethnic_identity_q,
+vaccine_information,
+vaccine_services,
+case when TRIM(health_care_setting_member_final_1) ="Resident at a skilled nursing or memory care facility (including residential care, assisted living facility, nursing facility or other long-term care facility)" then 1 else 0 end as q1i,
+case when TRIM(health_care_setting_member_final_1) ="Resident in adult foster care" then 1 else 0 end as q1ii,
+case when TRIM(health_care_setting_member_final_1) ="Resident in a group home for people with intellectual and developmental disabilities" then 1 else 0 end as q1iii,
+case when TRIM(health_care_setting_member_final_1) ="Patient at an inpatient psychiatric hospital" then 1 else 0 end as q1iv,
+case when TRIM(health_care_setting_member_final_1) ="Resident in a behavioral health treatment setting (e.g., residential treatment facility; substance use disorder or gambling residential and recovery facility; alcohol detox program; psychiatric residential treatment services facility)" then 1 else 0 end as q1v,
+case when TRIM(health_care_setting_member_final_1) ="Resident at other community-based housing facility for mental, emotional, behavioral, or substance use disorders" then 1 else 0 end as q1vi,
+case when TRIM(health_care_setting_member_final_1) ="Hospital staff (including satellite hospitals and freestanding emergency departments)" then 1 else 0 end as q1vii,
+case when TRIM(health_care_setting_member_final_1) ="Urgent care staff" then 1 else 0 end as q1viii,
+case when TRIM(health_care_setting_member_final_1) ="Skilled nursing, residential care or memory care facility staff (including assisted living facility nursing facility, or other long-term care facility)" then 1 else 0 end as q1ix,
+case when TRIM(health_care_setting_member_final_1) ="Health care interpreter or traditional health worker" then 1 else 0 end as q1x,
+case when TRIM(health_care_setting_member_final_1) ="Staff serving tribal health programs (for tribes receiving state allocation, including Coquille Tribe; Klamath Tribe; Burns Paiute Tribe; Grand Ronde Tribes; Siletz Tribe; Coos, Siuslaw and Lower Umpqua Tribes; Urban Indian Health Program, NARA Wellness Center)" then 1 else 0 end as q1xi,
+case when TRIM(health_care_setting_member_final_1) ="Health care provider for culturally specific health services, including tribal practices" then 1 else 0 end as q1xii,
+case when TRIM(health_care_setting_member_final_1) ="Staff serving adult foster care" then 1 else 0 end as q1xiii,
+case when TRIM(health_care_setting_member_final_1) ="Staff serving group homes for adults or children with intellectual and developmental disabilities" then 1 else 0 end as q1xiv,
+case when TRIM(health_care_setting_member_final_1) ="Paid or unpaid caregiver, including parents or foster parents of medically fragile children or adults who live at home" then 1 else 0 end as q1xv,
+case when TRIM(health_care_setting_member_final_1) ="Other health care provider who provides direct services to people with intellectual and developmental disabilities or medical conditions" then 1 else 0 end as q1xvi,
+case when TRIM(health_care_setting_member_final_1) ="Hospice program staff" then 1 else 0 end as q1xvii,
+case when TRIM(health_care_setting_member_final_1) ="Staff providing dialysis services" then 1 else 0 end as q1xviii,
+case when TRIM(health_care_setting_member_final_1) ="Staff providing medication assisted treatment (MAT) services" then 1 else 0 end as q1xix,
+case when TRIM(health_care_setting_member_final_1) ="Mobile crisis care and related services staff" then 1 else 0 end as q1xx,
+case when TRIM(health_care_setting_member_final_1) ="Health care provider in outpatient setting (e.g., ambulatory surgery centers, outpatient infusion centers, medical offices, dental offices, veterinary clinics, laboratories, pharmacies, and offices providing mental health or addiction services, etc.)" then 1 else 0 end as q1xxi,
+case when TRIM(health_care_setting_member_final_1) ="Day treatment center staff" then 1 else 0 end as q1xxii,
+case when TRIM(health_care_setting_member_final_1) ="Non-emergency medical transport staff, including those serving behavioral health patients" then 1 else 0 end as q1xxiii,
+case when TRIM(health_care_setting_member_final_1) ="Staff serving licensed residential behavioral health treatment settings (e.g., residential treatment facility; substance use disorder or gambling residential and recovery facility; alcohol detox program; psychiatric residential treatment services facility)" then 1 else 0 end as q1xxiv,
+case when TRIM(health_care_setting_member_final_1) ="Staff within other congregate care sites (e.g., group homes and community-based care settings for mental, emotional, behavior, or substance use disorders)" then 1 else 0 end as q1xxv,
+case when TRIM(health_care_setting_member_final_1) ="Staff in other public health settings such as health care providers serving women infant and children (WIC) or community-based organizations (CBO) with direct or indirect exposures (including staff at freestanding birth centers or providing home midwifery services)" then 1 else 0 end as q1xxvi,
+case when TRIM(health_care_setting_member_final_1) ="Health care provider in other outpatient, public health and early learning settings" then 1 else 0 end as q1xxvii,
+case when last_responder_key='Yes' then 1 else 0 end as q2,
+case when outside_healthcare_professional_key='Yes' then 1 else 0 end as q3,
+case when outside_healthcare_professional_value='Yes' then 1 else 0 end as q3a,
+case when is_ems_provider_or_first_responder='Yes' then 1 else 0 end as q4,
+case when is_correctional_setting='Yes' then 1 else 0 end as q5,
+case when substr(trim(early_learning_child_care_setting_value_member), 2, CHARACTER_LENGTH(trim(early_learning_child_care_setting_value_member))-2) ="Early learning or childcare provider or staff" then 1 else 0 end as q6i,
+case when substr(trim(early_learning_child_care_setting_value_member), 2, CHARACTER_LENGTH(trim(early_learning_child_care_setting_value_member))-2)="Emergency Child Care (ECE) facility provider or staff (including young adults ages 16-18)" then 1 else 0 end as q6ii,
+case when substr(trim(early_learning_child_care_setting_value_member), 2, CHARACTER_LENGTH(trim(early_learning_child_care_setting_value_member))-2)="License-exempt caregivers providing Oregon Department of Human Services subsidized childcare in the home" then 1 else 0 end as q6iii,
+case when substr(trim(early_learning_child_care_setting_value_member), 2, CHARACTER_LENGTH(trim(early_learning_child_care_setting_value_member))-2)="Licensed and recorded non-ECE facility provider or staff (home-based or center-based)" then 1 else 0 end as q6iv,
+case when substr(trim(early_learning_child_care_setting_value_member), 2, CHARACTER_LENGTH(trim(early_learning_child_care_setting_value_member))-2)="Office of Child Care investigator" then 1 else 0 end as q6v,
+case when substr(trim(early_learning_child_care_setting_value_member), 2, CHARACTER_LENGTH(trim(early_learning_child_care_setting_value_member))-2)="Individual in the substitute provider pool" then 1 else 0 end as q6vi,
+case when substr(trim(public_or_private_school_value_member), 2, CHARACTER_LENGTH(trim(public_or_private_school_value_member))-2) ="Teacher" then 1 else 0 end as q7i,
+case when substr(trim(public_or_private_school_value_member), 2, CHARACTER_LENGTH(trim(public_or_private_school_value_member))-2)  ="Substitute teacher" then 1 else 0 end as q7ii,
+case when substr(trim(public_or_private_school_value_member), 2, CHARACTER_LENGTH(trim(public_or_private_school_value_member))-2)  ="Paraprofessional" then 1 else 0 end as q7iii,
+case when substr(trim(public_or_private_school_value_member), 2, CHARACTER_LENGTH(trim(public_or_private_school_value_member))-2)="Bus driver" then 1 else 0 end as q7iv,
+case when substr(trim(public_or_private_school_value_member), 2, CHARACTER_LENGTH(trim(public_or_private_school_value_member))-2) ="Custodian: maintenance/facilities" then 1 else 0 end as q7v,
+case when substr(trim(public_or_private_school_value_member), 2, CHARACTER_LENGTH(trim(public_or_private_school_value_member))-2) ="Nutrition staff" then 1 else 0 end as q7vi,
+case when substr(trim(public_or_private_school_value_member), 2, CHARACTER_LENGTH(trim(public_or_private_school_value_member))-2) ="School office administrators" then 1 else 0 end as q7vii,
+case when substr(trim(public_or_private_school_value_member), 2, CHARACTER_LENGTH(trim(public_or_private_school_value_member))-2) ="School administrators" then 1 else 0 end as q7viii,
+case when substr(trim(public_or_private_school_value_member), 2, CHARACTER_LENGTH(trim(public_or_private_school_value_member))-2) ="Counselors and mental health support staff" then 1 else 0 end as q7ix,
+case when substr(trim(public_or_private_school_value_member), 2, CHARACTER_LENGTH(trim(public_or_private_school_value_member))-2) ="Health staff" then 1 else 0 end as q7x,
+case when substr(trim(public_or_private_school_value_member), 2, CHARACTER_LENGTH(trim(public_or_private_school_value_member))-2)  ="Childcare staff" then 1 else 0 end as q7xi,
+case when substr(trim(public_or_private_school_value_member), 2, CHARACTER_LENGTH(trim(public_or_private_school_value_member))-2) ="Library staff" then 1 else 0 end as q7xii,
+case when substr(trim(public_or_private_school_value_member), 2, CHARACTER_LENGTH(trim(public_or_private_school_value_member))-2)  ="Other educators and school staff in the school" then 1 else 0 end as q7xiii,
+case when substr(trim(public_or_private_school_value_member), 2, CHARACTER_LENGTH(trim(public_or_private_school_value_member))-2) ="Student and practicum teacher or their supervisor" then 1 else 0 end as q7xiv,
+case when substr(trim(public_or_private_school_value_member), 2, CHARACTER_LENGTH(trim(public_or_private_school_value_member))-2)  ="Early Intervention/Early Childhood Special Education staff" then 1 else 0 end as q7xv,
+case when substr(trim(public_or_private_school_value_member), 2, CHARACTER_LENGTH(trim(public_or_private_school_value_member))-2) ="Coach or official" then 1 else 0 end as q7xvi,
+case when substr(trim(public_or_private_school_value_member), 2, CHARACTER_LENGTH(trim(public_or_private_school_value_member))-2) ="Extracurricular and program staff (including community partners who provide services to students and families on school campuses, as well as programs like outdoor school)" then 1 else 0 end as q7xvii,
+case when substr(trim(public_or_private_school_value_member), 2, CHARACTER_LENGTH(trim(public_or_private_school_value_member))-2) ="District and education service district staff who spend time on school campuses (teacher coaches, TOSAs, IT, etc.)" then 1 else 0 end as q7xviii,
+case when age_45_64_health_conditions='Yes' then 1 else 0 end as q9,
+case when is_pregnant='Yes' then 1 else 0 end as q10,
+case when work_applicable="Yes" then 1 else 0 end as q11,
+case when is_low_income='Yes' then 1 else 0 end as q12,
+case when is_displaced_by_wildfire='Yes' then 1 else 0 end as q13,
+case when is_houselessness='Yes' then 1 else 0 end as q14,
+case when age_16_44_health_conditions='Yes' then 1 else 0 end as q15,
+case when is_frontline_worker='Yes' then 1 else 0 end as q16,
+case when is_multigeneration='Yes' then 1 else 0 end as q17,
+from `project.dataset.table-ru1`
+),
+
+`project.dataset.table-ru3` as (
+select etimestamp, registration_type , is_user_and_registrant_same,document_id, profile_id,email,emailscrubbed,
+email_is_valid,
+phone,phone_is_valid,
+phone_type,preferred_notification, 
+if(preferred_notification='Email' and email_is_valid='Y',email, if(phone_is_valid='Y',cast(phone as string),'')) as valid_preferred_contact,
+if(preferred_notification='Email' and email_is_valid='Y',email,
+    if(preferred_notification='Phone' and phone_is_valid='Y',cast(phone as string),
+    if(preferred_notification='Email' and phone_is_valid='Y',cast(phone as string),
+    if(preferred_notification='Phone' and email_is_valid='Y',email,''))) ) as best_contact,
+date_of_birth_text, date_of_birth_mdy,
+first_name,last_name,trim(first_name_match) as first_name_match,trim(last_name_match) as last_name_match,
+trim(first_name_clean) as first_name_clean, trim(last_name_clean) as last_name_clean,middle_initial,name_is_valid,county, 
+eligibility_status,date_of_birth,
+twilio_unsub_sms,
+gvo_unsub_sms,
+sendgrid_unsub_email,
+gvo_unsub_email,
+provider_export_status,
+gender,
+describe_your_gender,
+are_you_transgender_key,
+race_ethnicity_tribal,
+racial_or_ethnic_identity,
+primary_racial,
+language_at_home,
+language_of_communication,
+language_of_write,
+interpreter_for_communication_key,
+interpreter_for_communication_value,
+fluency_in_english,
+deaf_or_difficulty_in_hearing_key,
+deaf_or_difficulty_in_hearing_value,
+blind_or_difficulty_in_seeing_key,
+blind_or_difficulty_in_seeing_value,
+difficulty_walking_or_climbing_key,
+difficulty_walking_or_climbing_value,
+difficulty_concentrating_remembering_key,
+difficulty_concentrating_remembering_value,
+difficulty_dressing_or_bathing_key,
+difficulty_dressing_or_bathing_value,
+difficulty_learning_key,
+difficulty_learning_value,
+difficulty_communicating_key,
+difficulty_communicating_value,
+difficulty_doing_errands_alone_key,
+difficulty_doing_errands_alone_value,
+difficulty_with_mood_key,
+difficulty_with_mood_value,
+language_at_home_q,
+racial_or_ethnic_identity_q,
+vaccine_information,
+vaccine_services,
+SUM(q1i) as q1i,
+SUM(q1ii) as q1ii,
+SUM(q1iii) as q1iii,
+SUM(q1iv) as q1iv,
+SUM(q1v) as q1v,
+SUM(q1vi) as q1vi,
+SUM(q1vii) as q1vii,
+SUM(q1viii) as q1viii,
+SUM(q1ix) as q1ix,
+SUM(q1x) as q1x,
+SUM(q1xi) as q1xi,
+SUM(q1xii) as q1xii,
+SUM(q1xiii) as q1xiii,
+SUM(q1xiv) as q1xiv,
+SUM(q1xv) as q1xv,
+SUM(q1xvi) as q1xvi,
+SUM(q1xvii) as q1xvii,
+SUM(q1xviii) as q1xviii,
+SUM(q1xix) as q1xix,
+SUM(q1xx) as q1xx,
+SUM(q1xxi) as q1xxi,
+SUM(q1xxii) as q1xxii,
+SUM(q1xxiii) as q1xxiii,
+SUM(q1xxiv) as q1xxiv,
+SUM(q1xxv) as q1xxv,
+SUM(q1xxvi) as q1xxvi,
+SUM(q1xxvii) as q1xxvii,
+SUM(q2) as q2,
+SUM(q3) as q3,
+SUM(q3a) as q3a,
+SUM(q4) as q4,
+SUM(q5) as q5,
+SUM(q6i) as q6i,
+SUM(q6ii) as q6ii,
+SUM(q6iii) as q6iii,
+SUM(q6iv) as q6iv,
+SUM(q6v) as q6v,
+SUM(q6vi) as q6vi,
+SUM(q7i) as q7i,
+SUM(q7ii) as q7ii,
+SUM(q7iii) as q7iii,
+SUM(q7iv) as q7iv,
+SUM(q7v) as q7v,
+SUM(q7vi) as q7vi,
+SUM(q7vii) as q7vii,
+SUM(q7viii) as q7viii,
+SUM(q7ix) as q7ix,
+SUM(q7x) as q7x,
+SUM(q7xi) as q7xi,
+SUM(q7xii) as q7xii,
+SUM(q7xiii) as q7xiii,
+SUM(q7xiv) as q7xiv,
+SUM(q7xv) as q7xv,
+SUM(q7xvi) as q7xvi,
+SUM(q7xvii) as q7xvii,
+SUM(q7xviii) as q7xviii,
+SUM(q9) as q9,
+SUM(q10) as q10,
+SUM(q11) as q11,
+SUM(q12) as q12,
+SUM(q13) as q13,
+SUM(q14) as q14,
+SUM(q15) as q15,
+SUM(q16) as q16,
+SUM(q17) as q17,
+
+  case 
+    when (DATE_DIFF('2021-04-27',cast(date_of_birth as date),year) - IF(EXTRACT(MONTH FROM cast(date_of_birth as date))*100 + 
+    EXTRACT(DAY FROM cast(date_of_birth as date)) > 427,1,0)) <0 then 'invalid age (<0)'
+    when (DATE_DIFF('2021-04-27',cast(date_of_birth as date),year) - IF(EXTRACT(MONTH FROM cast(date_of_birth as date))*100 + 
+    EXTRACT(DAY FROM cast(date_of_birth as date)) > 427,1,0)) between 0 and 15 then '0-15'
+    when (DATE_DIFF('2021-04-27',cast(date_of_birth as date),year) - IF(EXTRACT(MONTH FROM cast(date_of_birth as date))*100 + 
+    EXTRACT(DAY FROM cast(date_of_birth as date)) > 427,1,0)) between 16 and 64 then '16-64'
+    when (DATE_DIFF('2021-04-27',cast(date_of_birth as date),year) - IF(EXTRACT(MONTH FROM cast(date_of_birth as date))*100 + 
+    EXTRACT(DAY FROM cast(date_of_birth as date)) > 427,1,0)) between 65 and 69 then '65-69'
+    when (DATE_DIFF('2021-04-27',cast(date_of_birth as date),year) - IF(EXTRACT(MONTH FROM cast(date_of_birth as date))*100 + 
+    EXTRACT(DAY FROM cast(date_of_birth as date)) > 427,1,0)) between 70 and 74 then '70-74'
+    when (DATE_DIFF('2021-04-27',cast(date_of_birth as date),year) - IF(EXTRACT(MONTH FROM cast(date_of_birth as date))*100 + 
+    EXTRACT(DAY FROM cast(date_of_birth as date)) > 427,1,0)) between 75 and 79 then '75-79'
+    when (DATE_DIFF('2021-04-27',cast(date_of_birth as date),year) - IF(EXTRACT(MONTH FROM cast(date_of_birth as date))*100 + 
+    EXTRACT(DAY FROM cast(date_of_birth as date)) > 427,1,0)) between 80 and 120 then '80-120'    
+    else 'invalid age (over 120)' 
+end as agecohort,
+DATE_DIFF('2021-04-27',cast(date_of_birth as date),year) - IF(EXTRACT(MONTH FROM cast(date_of_birth as date))*100 + 
+  EXTRACT(DAY FROM cast(date_of_birth as date)) > 427,1,0) AS agetoday,
+if(concat(email_is_valid,phone_is_valid,name_is_valid)='YYY' and DATE_DIFF('2021-04-27',cast(date_of_birth as date),year) - IF(EXTRACT(MONTH FROM cast(date_of_birth as date))*100 + 
+  EXTRACT(DAY FROM cast(date_of_birth as date)) > 427,1,0)<121,'Y','N') as valid_to_send
+ from `project.dataset.table-ru2`
+ group by etimestamp, registration_type, is_user_and_registrant_same,document_id, profile_id,email,emailscrubbed,email_is_valid,
+ valid_preferred_contact, date_of_birth_text, date_of_birth_mdy,phone,phone_is_valid, phone_type,preferred_notification, 
+ first_name,last_name,trim(first_name_match),
+ trim(last_name_match),trim(first_name_clean),best_contact,
+ trim(last_name_clean),middle_initial, name_is_valid,county,
+ eligibility_status,date_of_birth,agetoday,agecohort,valid_to_send, twilio_unsub_sms,
+gvo_unsub_sms,
+sendgrid_unsub_email,
+gvo_unsub_email,
+provider_export_status,
+gender,
+describe_your_gender,
+are_you_transgender_key,
+race_ethnicity_tribal,
+racial_or_ethnic_identity,
+primary_racial,
+language_at_home,
+language_of_communication,
+language_of_write,
+interpreter_for_communication_key,
+interpreter_for_communication_value,
+fluency_in_english,
+deaf_or_difficulty_in_hearing_key,
+deaf_or_difficulty_in_hearing_value,
+blind_or_difficulty_in_seeing_key,
+blind_or_difficulty_in_seeing_value,
+difficulty_walking_or_climbing_key,
+difficulty_walking_or_climbing_value,
+difficulty_concentrating_remembering_key,
+difficulty_concentrating_remembering_value,
+difficulty_dressing_or_bathing_key,
+difficulty_dressing_or_bathing_value,
+difficulty_learning_key,
+difficulty_learning_value,
+difficulty_communicating_key,
+difficulty_communicating_value,
+difficulty_doing_errands_alone_key,
+difficulty_doing_errands_alone_value,
+difficulty_with_mood_key,
+difficulty_with_mood_value,
+language_at_home_q,
+racial_or_ethnic_identity_q, vaccine_information,
+vaccine_services),
+
+ `project.dataset.table-ru4` as (
+select *, 
+#these are the phase and group definitions
+#note that non-age based Phases and groups validate age between 16 and 120 to deal with invalid birthdates
+if((q1i+q1iv+q1vii+q1viii+q1x+q1xi+q4)>0 and agetoday between 16 and 120,1,0) as Phase1a_Group1a,
+if((q1ii+q1iii+q1v+q1vi+q1ix+q1xii+q1xiii+q1xiv+q1xvi+q1xvii+q1xx+q1xxiv+q1xxv+q5)>0 and agetoday between 16 and 120,1,0) as Phase1a_Group2a,
+if((q1xv+q1xviii+q1xix+q1xxii+q1xxiii+q1xxvi)+if(q3+q3a=2,1,0)>0 and agetoday between 16 and 120,1,0) as Phase1a_Group3a, #has to have q3+q3i=2 to count
+if(q1xxi+q1xxvii+q2>0  and agetoday between 16 and 120,1,0) as Phase1a_Group4a,
+if(q6i+q6ii+q6iii+q6iv+q6v+q6vi +q7i+q7ii+q7iii+q7iv+q7v+q7vi+
+        q7vii+q7viii+q7ix+q7x+q7xi+q7xii+q7xiii+q7xiv+q7xv+q7xvi+q7xvii+q7xviii>0 and agetoday between 16 and 120,1,0) as Phase1b_Group1b,
+if(agetoday between 80 and 120,1,0) as Phase1b_Group2b,
+if(agetoday between 75 and 79,1,0) as Phase1b_Group3b,
+if(agetoday between 70 and 74,1,0) as Phase1b_Group4b,
+if(agetoday between 65 and 69,1,0) as Phase1b_Group5b,
+#if((q9+q10+q11+q12+q13+q14+q15+q16+q17)>0 and agetoday between 16 and 120,1,0) as Phase1b_Group6
+if((q9+q10+q11+q12+q13+q14)>0 and agetoday between 16 and 120,1,0) as Phase1b_Group6,
+if((q15+q16+q17)>0 and agetoday between 16 and 120,1,0) as Phase1b_Group7,
+if(agetoday between 16 and 120,1,0) as Phase2
+from `project.dataset.table-ru3`)
+
+select * ,
+#if you added a new phase and group, need to add it to the list under concat() then a new when statement
+ case instr(concat(Phase1a_Group1a,Phase1a_Group2a,Phase1a_Group3a,Phase1a_Group4a,
+                   Phase1b_Group1b,Phase1b_Group2b,Phase1b_Group3b,Phase1b_Group4b,
+                   Phase1b_Group5b, Phase1b_Group6,Phase1b_Group7,Phase2),'1') 
+  when 0 then ''
+  when 1 then '1a1a'
+  when 2 then '1a2a'
+  when 3 then '1a3a'
+  when 4 then '1a4a'
+  when 5 then '1b1b'
+  when 6 then '1b2b'
+  when 7 then '1b3b'
+  when 8 then '1b4b'
+  when 9 then '1b5b'
+  when 10 then '1b6'
+  when 11 then '1b7'
+  when 12 then '2' 
+  else concat('error-',instr(concat(Phase1a_Group1a,Phase1a_Group2a,Phase1a_Group3a,Phase1a_Group4a,
+                   Phase1b_Group1b,Phase1b_Group2b,Phase1b_Group3b,Phase1b_Group4b,
+                   Phase1b_Group5b, Phase1b_Group6, Phase1b_Group7),'1'))
+  end as HighestPhase,
+from `project.dataset.table-ru4`
